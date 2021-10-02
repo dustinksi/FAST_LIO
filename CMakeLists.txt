@@ -1,19 +1,26 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(fast_lio)
 
-SET(CMAKE_BUILD_TYPE "Debug")
+include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
+initialize_target_flags()
+add_compile_options("-std=c++17")
+add_definitions("-DJUST_SLAM_NO_PRECOMPILE")
+add_definitions("-DROS_PROJECT")
+enable_google_test()
 
-ADD_COMPILE_OPTIONS(-std=c++14 )
-ADD_COMPILE_OPTIONS(-std=c++14 )
-set( CMAKE_CXX_FLAGS "-std=c++14 -O3" )
+# SET(CMAKE_BUILD_TYPE "Debug")
+
+# ADD_COMPILE_OPTIONS(-std=c++14 )
+# ADD_COMPILE_OPTIONS(-std=c++14 )
+# set( CMAKE_CXX_FLAGS "-std=c++14 -O3" )
 
 add_definitions(-DROOT_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/\")
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions" )
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -std=c++0x -std=c++14 -fexceptions")
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions" )
+# set(CMAKE_CXX_STANDARD 14)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_EXTENSIONS OFF)
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -pthread -std=c++0x -std=c++14 -fexceptions")
 
 message("Current CPU archtecture: ${CMAKE_SYSTEM_PROCESSOR}")
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" )
@@ -58,6 +65,14 @@ find_package(catkin REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(PCL 1.8 REQUIRED)
+find_package(Gflags REQUIRED QUIET)
+find_package(Glog REQUIRED QUIET)
+
+set(BASIC_LIBS
+  ${catkin_LIBRARIES}
+  ${GLOG_LIBRARIES}
+  ${GFLAGS_LIBRARIES}
+)
 
 message(Eigen: ${EIGEN3_INCLUDE_DIR})
 
@@ -87,3 +102,7 @@ catkin_package(
 add_executable(fastlio_mapping src/laserMapping.cpp include/ikd-Tree/ikd_Tree.cpp src/preprocess.cpp)
 target_link_libraries(fastlio_mapping ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES})
 target_include_directories(fastlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
+
+file(GLOB_RECURSE TARGET_HEADERS "*.h")
+
+add_subdirectory(src/tools)

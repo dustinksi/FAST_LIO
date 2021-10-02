@@ -2,3 +2,15 @@
 	path = include/ikd-Tree
 	url = https://github.com/hku-mars/ikd-Tree.git
 	branch = fast_lio
+[submodule "src/utils"]
+	path = src/utils
+	url = git@github.com:dustinksi/cpp_utils.git
+	branch = dev/cpp
+[submodule "src/tools"]
+	path = src/tools
+	url = git@github.com:dustinksi/data_dump_tools.git
+	branch = dev/cpp
+[submodule "cmake"]
+	path = cmake
+	url = git@github.com:dustinksi/cmake_modules.git
+	branch = dev/cpp
