@@ -24,6 +24,10 @@
 #include <tf/transform_broadcaster.h>
 #include <thread>
 
+#include "src/tools/data_dump_cloud.h"
+#include "src/tools/data_dump_common.h"
+#include "src/tools/data_dump_ros.h"
+
 /// *************Preconfiguration
 
 #define MAX_INI_COUNT (20)
@@ -86,6 +90,11 @@ private:
   int init_iter_num = 1;
   bool b_first_frame_ = true;
   bool imu_need_init_ = true;
+
+private:
+  CloudDumpSaver<PointType>::Ptr p_cloud_dump_saver_;
+  // DataDumpSave<
+  // dump::DataDumpSaver<
 };
 
 ImuProcess::ImuProcess()

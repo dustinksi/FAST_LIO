@@ -384,8 +384,9 @@ bool sync_packages(MeasureGroup &meas) {
   if (!lidar_pushed) {
     meas.lidar = lidar_buffer.front();
     meas.lidar_beg_time = time_buffer.front();
-    if (meas.lidar->points.size() <= 1) // time too little
-    {
+    
+    // time too little
+    if (meas.lidar->points.size() <= 1) {
       lidar_end_time = meas.lidar_beg_time + lidar_mean_scantime;
       ROS_WARN("Too few input point cloud!\n");
     } else if (meas.lidar->points.back().curvature / double(1000) <
