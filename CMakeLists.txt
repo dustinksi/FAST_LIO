@@ -6,7 +6,7 @@ initialize_target_flags()
 add_compile_options("-std=c++17")
 add_definitions("-DJUST_SLAM_NO_PRECOMPILE")
 add_definitions("-DROS_PROJECT")
-enable_google_test()
+enable_ros_gtest()
 
 # SET(CMAKE_BUILD_TYPE "Debug")
 
@@ -91,8 +91,8 @@ add_message_files(
 )
 
 generate_messages(
- DEPENDENCIES
- geometry_msgs
+  DEPENDENCIES
+    geometry_msgs
 )
 
 catkin_package(
