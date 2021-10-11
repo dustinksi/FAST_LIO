@@ -352,7 +352,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &                          meas
     R_imu << MAT_FROM_ARRAY(head->rot);  // rot_imu_0
     // cout<<"head imu acc: "<<acc_imu.transpose()<<endl;
     vel_imu << VEC_FROM_ARRAY(head->vel);     // vel_imu_0
-    pos_imu << VEC_FROM_ARRAY(head->pos);     // pos_imu_1
+    pos_imu << VEC_FROM_ARRAY(head->pos);     // pos_imu_0
     acc_imu << VEC_FROM_ARRAY(tail->acc);     // acc_imu_1
     angvel_avr << VEC_FROM_ARRAY(tail->gyr);  // ang_imu_1
 
@@ -388,7 +388,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &                          meas
       upt.dt        = dt;
       upt.rot_imu_0 = R_imu;
       upt.vel_imu_0 = vel_imu;
-      upt.pos_imu_1 = pos_imu;
+      upt.pos_imu_0 = pos_imu;
       upt.acc_imu_1 = acc_imu;
       upt.ang_imu_1 = angvel_avr;
       upt.pt_res    = P_compensate;
