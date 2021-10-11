@@ -822,11 +822,9 @@ int main(int argc, char **argv) {
   ros::Rate rate(5000);
   bool      status = ros::ok();
 
-  const std::string dump_folder = "/tmp/data_dump";
-
   // ROSImuDumpSaver raw_imu_saver(dump_folder, "raw_imu");
-  DataDumpSaver<dump::IMUGroup> imu_group_saver(dump_folder, "sync_imu");
-  CloudDumpSaver<PointType>     cloud_flat_saver(dump_folder, "sync_flat");
+  DataDumpSaver<dump::IMUGroup> imu_group_saver(DUMP_FOLDER, "sync_imu");
+  CloudDumpSaver<PointType>     cloud_flat_saver(DUMP_FOLDER, "sync_flat");
 
   while (status) {
     if (flg_exit) break;

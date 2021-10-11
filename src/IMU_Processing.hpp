@@ -31,6 +31,8 @@
 #include "/home/dexin/source_code/prj_ros/fast_lio_ws/src/FAST_LIO/src/tools/data_dump_common.h"
 #include "/home/dexin/source_code/prj_ros/fast_lio_ws/src/FAST_LIO/src/tools/data_dump_ros.h"
 
+#define DUMP_FOLDER "/tmp/data_dump"
+
 /// *************Preconfiguration
 
 #define MAX_INI_COUNT (20)
@@ -94,9 +96,10 @@ class ImuProcess {
   bool                            imu_need_init_ = true;
 
  private:
-  CloudDumpSaver<PointType>::Ptr p_cloud_dump_saver_;
-  // DataDumpSave<
-  // dump::DataDumpSaver<
+  // CloudDumpSaver<PointType>::Ptr           p_undistort_cloud_saver_;
+  DataDumpSaver<dump::PreIntgGroup>::Ptr   p_preintg_group_saver_;
+  DataDumpSaver<dump::ESEKFState>::Ptr     p_state_end_saver_;
+  DataDumpSaver<dump::UndistortPoint>::Ptr p_undistort_point_saver_;
 };
 
 ImuProcess::ImuProcess() : b_first_frame_(true), imu_need_init_(true), start_timestamp_(-1) {
@@ -112,6 +115,15 @@ ImuProcess::ImuProcess() : b_first_frame_(true), imu_need_init_(true), start_tim
   Lidar_T_wrt_IMU = Zero3d;
   Lidar_R_wrt_IMU = Eye3d;
   last_imu_.reset(new sensor_msgs::Imu());
+
+  // p_undistort_cloud_saver_ =
+  //     std::make_shared<CloudDumpSaver<PointType>>(DUMP_FOLDER, "undistort_cloud");
+  p_preintg_group_saver_ =
+      std::make_shared<DataDumpSaver<dump::PreIntgGroup>>(DUMP_FOLDER, "preinteg_group");
+  p_state_end_saver_ =
+      std::make_shared<DataDumpSaver<dump::ESEKFState>>(DUMP_FOLDER, "esekf_state_end");
+  p_undistort_point_saver_ =
+      std::make_shared<DataDumpSaver<dump::UndistortPoint>>(DUMP_FOLDER, "undistort_detail");
 }
 
 ImuProcess::~ImuProcess() {}
@@ -294,6 +306,25 @@ void ImuProcess::UndistortPcl(const MeasureGroup &                          meas
                                  imu_state.rot.toRotationMatrix()));
   }
 
+  dump::PreIntgGroup state_group;
+  state_group.num_state  = IMUpose.size();
+  state_group.list_state = new dump::PreIntgState[state_group.num_state];
+
+  int idx = 0;
+  for (auto it_kp = IMUpose.begin(); it_kp != IMUpose.end(); ++it_kp, ++idx) {
+    dump::PreIntgState state;
+
+    state.dbl_s_imu = it_kp->offset_time;
+    state.rot << MAT_FROM_ARRAY(it_kp->rot);
+    state.pos << VEC_FROM_ARRAY(it_kp->pos);
+    state.vel << VEC_FROM_ARRAY(it_kp->vel);
+    state.gyr << VEC_FROM_ARRAY(it_kp->gyr);
+    state.acc << VEC_FROM_ARRAY(it_kp->acc);
+
+    state_group.list_state[idx] = state;
+  }
+  p_preintg_group_saver_->Dump(static_cast<uint64_t>(pcl_beg_time * 1e6f), state_group);
+
   /*** calculated the pos and attitude prediction at the frame-end ***/
   double note = pcl_end_time > imu_end_time ? 1.0 : -1.0;
   dt          = note * (pcl_end_time - imu_end_time);
@@ -303,17 +334,27 @@ void ImuProcess::UndistortPcl(const MeasureGroup &                          meas
   last_imu_            = meas.imu.back();
   last_lidar_end_time_ = pcl_end_time;
 
+  dump::ESEKFState esekf_state_end;
+  esekf_state_end.rot   = imu_state.rot.toRotationMatrix();
+  esekf_state_end.pos   = imu_state.pos;
+  esekf_state_end.R_L_I = imu_state.offset_R_L_I.toRotationMatrix();
+  esekf_state_end.t_L_I = imu_state.offset_T_L_I;
+  esekf_state_end.ba    = imu_state.ba;
+  esekf_state_end.bg    = imu_state.bg;
+  esekf_state_end.grav  = imu_state.grav.get_vect();
+  p_state_end_saver_->Dump(static_cast<uint64_t>(pcl_beg_time * 1e6f), esekf_state_end);
+
   /*** undistort each lidar point (backward propagation) ***/
   auto it_pcl = pcl_out.points.end() - 1;
   for (auto it_kp = IMUpose.end() - 1; it_kp != IMUpose.begin(); it_kp--) {
-    auto head = it_kp - 1;
-    auto tail = it_kp;
-    R_imu << MAT_FROM_ARRAY(head->rot);
+    auto head = it_kp - 1;               // 0
+    auto tail = it_kp;                   // 1
+    R_imu << MAT_FROM_ARRAY(head->rot);  // rot_imu_0
     // cout<<"head imu acc: "<<acc_imu.transpose()<<endl;
-    vel_imu << VEC_FROM_ARRAY(head->vel);
-    pos_imu << VEC_FROM_ARRAY(head->pos);
-    acc_imu << VEC_FROM_ARRAY(tail->acc);
-    angvel_avr << VEC_FROM_ARRAY(tail->gyr);
+    vel_imu << VEC_FROM_ARRAY(head->vel);     // vel_imu_0
+    pos_imu << VEC_FROM_ARRAY(head->pos);     // pos_imu_1
+    acc_imu << VEC_FROM_ARRAY(tail->acc);     // acc_imu_1
+    angvel_avr << VEC_FROM_ARRAY(tail->gyr);  // ang_imu_1
 
     for (; it_pcl->curvature / double(1000) > head->offset_time; it_pcl--) {
       dt = it_pcl->curvature / double(1000) - head->offset_time;
@@ -337,6 +378,23 @@ void ImuProcess::UndistortPcl(const MeasureGroup &                          meas
       it_pcl->x = P_compensate(0);
       it_pcl->y = P_compensate(1);
       it_pcl->z = P_compensate(2);
+
+      dump::UndistortPoint upt;
+      upt.pt_raw    = P_i;
+      upt.R_L_I     = imu_state.offset_R_L_I;
+      upt.t_L_I     = imu_state.offset_T_L_I;
+      upt.rot       = imu_state.rot;
+      upt.pos       = imu_state.pos;
+      upt.dt        = dt;
+      upt.rot_imu_0 = R_imu;
+      upt.vel_imu_0 = vel_imu;
+      upt.pos_imu_1 = pos_imu;
+      upt.acc_imu_1 = acc_imu;
+      upt.ang_imu_1 = angvel_avr;
+      upt.pt_res    = P_compensate;
+
+      static int idx = 0;
+      p_undistort_point_saver_->Dump(idx++, upt);
 
       if (it_pcl == pcl_out.points.begin()) break;
     }
